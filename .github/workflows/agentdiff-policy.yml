@@ -53,7 +53,8 @@ jobs:
 
       - name: Check policy
         run: |
-          agentdiff policy check --format github-annotations
+          agentdiff policy check --format github-annotations \
+            --since "${{ github.event.pull_request.base.sha }}"
 
       - name: Post attribution comment
         if: always()

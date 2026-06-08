@@ -17,13 +17,14 @@ permissions:
 #   AGENTDIFF_ORG_REQUIRE_ATTRIBUTION  "true" / "false"
 #   AGENTDIFF_ORG_APPROVED_AGENTS      e.g. "claude-code,cursor,codex,human"
 jobs:
-  policy:
+  agentdiff:
     runs-on: ubuntu-latest
     env:
       AGENTDIFF_ORG_MAX_AI_PERCENT: ${{ vars.AGENTDIFF_ORG_MAX_AI_PERCENT }}
       AGENTDIFF_ORG_REQUIRE_SIGNED: ${{ vars.AGENTDIFF_ORG_REQUIRE_SIGNED }}
       AGENTDIFF_ORG_REQUIRE_ATTRIBUTION: ${{ vars.AGENTDIFF_ORG_REQUIRE_ATTRIBUTION }}
       AGENTDIFF_ORG_APPROVED_AGENTS: ${{ vars.AGENTDIFF_ORG_APPROVED_AGENTS }}
+      AGENTDIFF_ORG_REQUIRE_COVERAGE: ${{ vars.AGENTDIFF_ORG_REQUIRE_COVERAGE }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,10 +38,18 @@ jobs:
         run: |
           git checkout -B "${{ github.head_ref }}" "${{ github.event.pull_request.head.sha }}"
 
-      - name: Install agentdiff
+      # Org-control gates (approved_agents, require_coverage, org floor-merge)
+      # live in the private enterprise crate, so CI builds that binary rather
+      # than installing the OSS release. ENT_PAT = repo secret, a PAT with read
+      # access to codeprakhar25/agentdiff-enterprise.
+      - name: Build enterprise agentdiff
+        env:
+          ENT_PAT: ${{ secrets.ENT_PAT }}
         run: |
-          curl -fsSL https://raw.githubusercontent.com/codeprakhar25/agentdiff/main/install.sh | bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          git clone --depth 1 --branch org-controls-ci \
+            "https://x-access-token:${ENT_PAT}@github.com/codeprakhar25/agentdiff-enterprise.git" ent
+          cargo build --release --manifest-path ent/core/Cargo.toml
+          echo "$PWD/ent/core/target/release" >> $GITHUB_PATH
 
       - name: Check policy
         run: |

@@ -17,7 +17,7 @@ permissions:
 #   AGENTDIFF_ORG_REQUIRE_ATTRIBUTION  "true" / "false"
 #   AGENTDIFF_ORG_APPROVED_AGENTS      e.g. "claude-code,cursor,codex,human"
 jobs:
-  policy:
+  agentdiff:
     runs-on: ubuntu-latest
     env:
       AGENTDIFF_ORG_MAX_AI_PERCENT: ${{ vars.AGENTDIFF_ORG_MAX_AI_PERCENT }}

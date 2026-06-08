@@ -1,0 +1,55 @@
+name: AgentDiff Policy Check
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+# Org baseline policy. Set these as ORG-LEVEL GitHub Variables
+# (Org → Settings → Secrets and variables → Actions → Variables) so they are
+# inherited by every repo and CANNOT be edited inside a pull request. The repo's
+# .agentdiff/policy.toml may only make rules STRICTER, never weaker.
+#   AGENTDIFF_ORG_MAX_AI_PERCENT       e.g. "70"
+#   AGENTDIFF_ORG_REQUIRE_SIGNED       "true" / "false"
+#   AGENTDIFF_ORG_REQUIRE_ATTRIBUTION  "true" / "false"
+#   AGENTDIFF_ORG_APPROVED_AGENTS      e.g. "claude-code,cursor,codex,human"
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    env:
+      AGENTDIFF_ORG_MAX_AI_PERCENT: ${{ vars.AGENTDIFF_ORG_MAX_AI_PERCENT }}
+      AGENTDIFF_ORG_REQUIRE_SIGNED: ${{ vars.AGENTDIFF_ORG_REQUIRE_SIGNED }}
+      AGENTDIFF_ORG_REQUIRE_ATTRIBUTION: ${{ vars.AGENTDIFF_ORG_REQUIRE_ATTRIBUTION }}
+      AGENTDIFF_ORG_APPROVED_AGENTS: ${{ vars.AGENTDIFF_ORG_APPROVED_AGENTS }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch agentdiff refs
+        run: |
+          git fetch origin '+refs/agentdiff/*:refs/agentdiff/*' || true
+
+      - name: Check out PR head branch
+        run: |
+          git checkout -B "${{ github.head_ref }}" "${{ github.event.pull_request.head.sha }}"
+
+      - name: Install agentdiff
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/codeprakhar25/agentdiff/main/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Check policy
+        run: |
+          agentdiff policy check --format github-annotations
+
+      - name: Post attribution comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR="${{ github.event.pull_request.number }}"
+          agentdiff report --format markdown --post-pr-comment "$PR" || true

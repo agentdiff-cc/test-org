@@ -46,7 +46,7 @@ jobs:
         env:
           ENT_PAT: ${{ secrets.ENT_PAT }}
         run: |
-          git clone --depth 1 --branch org-controls-ci \
+          git clone --depth 1 --branch main \
             "https://x-access-token:${ENT_PAT}@github.com/codeprakhar25/agentdiff-enterprise.git" ent
           cargo build --release --manifest-path ent/core/Cargo.toml
           echo "$PWD/ent/core/target/release" >> $GITHUB_PATH
